@@ -1,4 +1,5 @@
 #include QMK_KEYBOARD_H
+#include <lib/lib8tion/lib8tion.h>
 
 // Defines names for use in layer keycodes and the keymap
 enum layer_names {
@@ -69,3 +70,28 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     _______
 )
 };
+
+#ifdef RGB_MATRIX_ENABLE
+// The 9 "accent light" LEDs (indices 33-41 in kucheza.c's g_led_config)
+// aren't under any key. Most enabled modes (gradient/breathing/solid)
+// already paint every LED uniformly, so they match automatically. Splash
+// is reactive to keypresses though, and these LEDs are far from any key,
+// so on their own they'd mostly just sit idle. Override them here with a
+// gentle ambient breathing pulse whenever Splash is the active mode,
+// independent of key activity. Same breathing curve as the core
+// BREATHING effect (quantum/rgb_matrix/animations/breathing_anim.h).
+bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+    if (rgb_matrix_get_mode() == RGB_MATRIX_SPLASH) {
+        HSV      hsv  = rgb_matrix_config.hsv;
+        uint16_t time = scale16by8(g_rgb_timer, rgb_matrix_config.speed / 8);
+        hsv.v         = scale8(abs8(sin8(time) - 128) * 2, hsv.v);
+        RGB rgb       = hsv_to_rgb(hsv);
+        for (uint8_t i = 33; i <= 41; i++) {
+            if (i >= led_min && i < led_max) {
+                rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
+            }
+        }
+    }
+    return true;
+}
+#endif
