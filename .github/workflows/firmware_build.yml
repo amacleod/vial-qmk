@@ -1,84 +1,33 @@
-name: Build QMK firmware
+name: Build Kucheza firmware
 on:
   workflow_dispatch:
   push:
     branches:
+      - kucheza-vial
       - vial
-      - 'develop**'
-      - github-actions-build
 jobs:
-  gather-keyboards:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        repository: ${{ github.repository}}
-        ref: ${{ github.ref }}
-    - id: set-matrix
-      run: |
-          content=$(bash bin/fp_build.sh -l | sed s~keyboards/fingerpunch/~~|  jq -Rsc '. / "\n" - [""]')
-          content="{\"keyboard\":$content}"
-          echo "matrix=$content" >> $GITHUB_OUTPUT
-
   Build:
-    needs: gather-keyboards
     runs-on: ubuntu-latest
-    container: ghcr.io/qmk/qmk_cli@sha256:16c4916e95b99bf88d27b15aec8db409ee17265d1710287fde248c6666508966
+    container: ghcr.io/qmk/qmk_cli:latest
     strategy:
       fail-fast: false
-      matrix: ${{fromJson(needs.gather-keyboards.outputs.matrix)}}
+      matrix:
+        keymap: [amacleod, default]
     steps:
-      - name: Checkout QMK
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.repository}}
-          ref: ${{ github.ref }}
           submodules: recursive
 
+      - name: Install QMK python dependencies
+        run: /opt/uv/tools/qmk/bin/python3 -m pip install -q -r requirements.txt
+
       - name: Build firmware
-        shell: bash
-        run: |
-          git config --global --add safe.directory $(pwd)
-
-          wget -q https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64 -O jq
-          chmod +x jq
-          mv jq /usr/local/sbin/
-
-          keyboards=$(bash bin/fp_build.sh -l| sed s~keyboards/fingerpunch/~~)
-
-          echo "${keyboards}" | while IFS= read -r line ; do
-            case "$line" in
-              *${{ matrix.keyboard }}*)
-                echo "Building for ${line}:"
-                make_command="bin/fp_build.sh -k ${line} -m vial -r"
-                echo "${make_command}"
-                $make_command
-              ;;
-            esac
-          done
-
-      - name: Prepare keyboard name for Artifacts
-        id: prep_artifact_name
-        run: |
-          # Calculate a unique string which applies to the matrix entry
-          # that we can use to construct unique and valid artifact names.
-          # We achieve that by squashing runs of characters are invalid
-          # in artifact names, and also whitespace and dashes, into a
-          # single dash character.  The unique string will appear as
-          # the environment variable ARTIFACT_NAME in subsequent actions.
-          name="${{ matrix.keyboard }}"
-          # The option to enable + in sed regexps differs by OS so we avoid it
-          name=$(echo -n "$name" | sed -e 's/[ \t:\/\\"<>|*?]/_/g' -e 's/__*/_/g')
-          echo "KB_CLEAN_ARTIFACT_NAME=$name" >> $GITHUB_ENV
+        run: make fingerpunch/kucheza:${{ matrix.keymap }}
 
       - name: Archive firmware
         uses: actions/upload-artifact@v4
-        continue-on-error: true
         with:
-          name: vial_fingerpunch_${{ env.KB_CLEAN_ARTIFACT_NAME }}
+          name: kucheza_${{ matrix.keymap }}
           path: |
-            *.hex
-            *.bin
             *.uf2
