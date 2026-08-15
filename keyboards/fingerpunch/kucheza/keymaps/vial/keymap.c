@@ -79,12 +79,10 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 // This hook runs after the core effect has already rendered the frame, so
 // it can selectively repaint on top of it -- used here for two things:
 //
-//  - BREATHING: repaint the *whole* board at 0.75x the core effect's
-//    speed (observed ~40 breaths/min at the current speed setting; this
-//    targets ~30/min). The core BREATHING effect's own speed always
-//    tracks the shared RGB_SPD/RGB_SPI setting (used by other modes too),
-//    so slowing just this one down means recomputing it entirely rather
-//    than adjusting a shared setting.
+//  - BREATHING: repaint the *whole* board at 0.5x the core effect's
+//    speed (0.75x still felt too fast on hardware). Still tracks
+//    RGB_SPD/RGB_SPI proportionally like every other mode, just scaled
+//    down -- not a fixed rate.
 //  - SPLASH: the accent LEDs are far from any key, so Splash's
 //    keypress-distance ripple rarely reaches them and they'd otherwise
 //    sit idle. Give them their own slow, ambient rainbow cycle instead
@@ -93,7 +91,7 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     switch (rgb_matrix_get_mode()) {
         case RGB_MATRIX_BREATHING: {
             HSV      hsv        = rgb_matrix_config.hsv;
-            uint8_t  slow_speed = (uint8_t)(((uint16_t)rgb_matrix_config.speed * 3) / 4);
+            uint8_t  slow_speed = (uint8_t)(((uint16_t)rgb_matrix_config.speed) / 2);
             uint16_t time       = scale16by8(g_rgb_timer, slow_speed / 8);
             hsv.v               = scale8(abs8(sin8(time) - 128) * 2, hsv.v);
             RGB rgb              = hsv_to_rgb(hsv);
