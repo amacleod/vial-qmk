@@ -7,6 +7,14 @@ enum layer_names {
     _RGB
 };
 
+enum custom_keycodes {
+    // Snaps RGB back to the intended default (Gradient Up-Down, standard
+    // hue/sat/val) and persists it, in case the saved mode ever ends up
+    // stale/wrong after a future firmware change shifts effect indices
+    // around (has already happened a couple of times during development).
+    RGB_RESET = SAFE_RANGE,
+};
+
 // +-------+-------+-------+-------+-------+-------+-------+
 // |       |       |       |       |       |       |       |
 // +-------+-------+-------+-------+-------+-------+-------+
@@ -61,7 +69,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 
 [_RGB] =  LAYOUT_kucheza(
     QK_BOOT,   KC_F1,        KC_F2,        KC_F3,        KC_F4,        KC_F5,        AU_TOGG,
-    _______,   RGB_TOG,      RGB_RMOD,     RGB_MOD,      _______,      TG(_GAMING),  _______,
+    _______,   RGB_TOG,      RGB_RMOD,     RGB_MOD,      RGB_RESET,    TG(_GAMING),  _______,
     _______,   RGB_SPI,      RGB_HUI,      RGB_SAI,      RGB_VAI,      KC_END,       _______,
     _______,   RGB_SPD,      RGB_HUD,      RGB_SAD,      RGB_VAD,      _______,                            _______,
     _______,   _______,      _______,                    _______,      _______,      _______,     _______, _______, _______,
@@ -70,6 +78,21 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     _______
 )
 };
+
+#ifdef RGB_MATRIX_ENABLE
+bool process_record_user(uint16_t keycode, keyrecord_t *record) {
+    switch (keycode) {
+        case RGB_RESET:
+            if (record->event.pressed) {
+                rgb_matrix_mode_noeeprom(RGB_MATRIX_GRADIENT_UP_DOWN);
+                rgb_matrix_sethsv_noeeprom(0, 255, RGB_MATRIX_MAXIMUM_BRIGHTNESS);
+                fp_rgb_set_config_from_current_values();
+            }
+            return false;
+    }
+    return true;
+}
+#endif
 
 #ifdef RGB_MATRIX_ENABLE
 // The 9 "accent light" LEDs (indices 33-41 in kucheza.c's g_led_config)
@@ -85,8 +108,12 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 //    down -- not a fixed rate.
 //  - SPLASH: the accent LEDs are far from any key, so Splash's
 //    keypress-distance ripple rarely reaches them and they'd otherwise
-//    sit idle. Give them their own slow, ambient rainbow cycle instead
-//    (~20s per full hue rotation), independent of key activity.
+//    sit idle. Give them a rainbow spread across all 9 (full hue range,
+//    left = low hue) that scrolls leftward over time -- each LED's own
+//    hue still advances at the ~20s/rotation base rate, but since a full
+//    left-shift by one LED only takes 1/9th of that (the LEDs are spaced
+//    a ninth of the hue wheel apart), the scrolling motion reads as
+//    noticeably faster than a single LED's own color cycling would.
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     switch (rgb_matrix_get_mode()) {
         case RGB_MATRIX_BREATHING: {
@@ -101,12 +128,17 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
             break;
         }
         case RGB_MATRIX_SPLASH: {
-            HSV hsv = rgb_matrix_config.hsv;
-            hsv.h   = (uint8_t)(g_rgb_timer / 80); // ~20s per full rotation
-            hsv.s   = 255;
-            RGB rgb = hsv_to_rgb(hsv);
-            for (uint8_t i = 33; i <= 41; i++) {
+            const uint8_t accent_first = 33;
+            const uint8_t accent_count = 9;
+            const uint8_t hue_step     = 256 / accent_count;
+            uint8_t       base_hue     = (uint8_t)(g_rgb_timer / 80); // ~20s per full rotation
+            for (uint8_t idx = 0; idx < accent_count; idx++) {
+                uint8_t i = accent_first + idx;
                 if (i >= led_min && i < led_max) {
+                    HSV hsv = rgb_matrix_config.hsv;
+                    hsv.h   = (uint8_t)(base_hue + idx * hue_step);
+                    hsv.s   = 255;
+                    RGB rgb = hsv_to_rgb(hsv);
                     rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
                 }
             }

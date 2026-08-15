@@ -2,6 +2,7 @@
   "name": "kucheza",
   "vendorId": "0xFEFE",
   "productId": "0x17C8",
+  "lighting": "vialrgb",
   "matrix": {"rows": 6, "cols": 8},
   "layouts": {
     "labels": [
