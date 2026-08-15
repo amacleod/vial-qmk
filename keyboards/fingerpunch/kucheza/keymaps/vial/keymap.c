@@ -59,7 +59,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
 ),
 
 [_RGB] =  LAYOUT_kucheza(
-    QK_BOOT,   KC_F1,        KC_F2,        KC_F3,        KC_F4,        KC_F5,        _______,
+    QK_BOOT,   KC_F1,        KC_F2,        KC_F3,        KC_F4,        KC_F5,        AU_TOGG,
     _______,   RGB_TOG,      RGB_RMOD,     RGB_MOD,      _______,      TG(_GAMING),  _______,
     _______,   RGB_SPI,      RGB_HUI,      RGB_SAI,      RGB_VAI,      KC_END,       _______,
     _______,   RGB_SPD,      RGB_HUD,      RGB_SAD,      RGB_VAD,      _______,                            _______,

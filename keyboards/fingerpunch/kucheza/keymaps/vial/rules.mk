@@ -10,3 +10,8 @@ ifeq ($(strip $(RGB_MATRIX_ENABLE)), yes)
 endif
 LTO_ENABLE = yes
 QMK_SETTINGS = no
+
+# Board rules.mk sets AUDIO_ENABLE = no unconditionally, so the later
+# `AUDIO_ENABLE ?= yes` there never takes effect. Override it here instead
+# of touching Sadek's file -- piezo is populated on this board.
+AUDIO_ENABLE = yes
