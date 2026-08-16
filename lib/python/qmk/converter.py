@@ -24,7 +24,13 @@ def kle2qmk(kle):
             if key['height'] != 1:
                 qmk_key['h'] = key['height']
             if 'name' in key and key['name']:
-                qmk_key['label'] = key['name'].split('\n', 1)[0]
+                name = key['name']
+                if isinstance(name, list):
+                    # Some legends use KLE's rich-label array form (mixing
+                    # text runs with style-change dicts) instead of a plain
+                    # newline-separated string; take the first text run.
+                    name = next((part for part in name if isinstance(part, str)), '')
+                qmk_key['label'] = name.split('\n', 1)[0]
             else:
                 del (qmk_key['label'])
 

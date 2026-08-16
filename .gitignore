@@ -87,6 +87,8 @@ tags
 *.apng
 *.mng
 *.svg
+!/keyboards/fingerpunch/kucheza/keymaps/amacleod/keymap.svg
+!/keyboards/fingerpunch/kucheza/keymaps/default/keymap.svg
 *.webp
 *.webm
 *.avi
